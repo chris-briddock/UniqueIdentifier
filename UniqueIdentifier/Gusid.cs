@@ -1,5 +1,8 @@
 ﻿namespace UniqueIdentifier;
 
+/// <summary>
+/// Represents a globally unique sortable identifier.
+/// </summary>
 public readonly struct Gusid :
     IComparable, IComparable<Gusid>,
     IEquatable<Gusid>
@@ -7,8 +10,14 @@ public readonly struct Gusid :
     private const int Size = 16; // 128 bits (16 bytes)
     private readonly byte[] _value;
 
+    private Span<byte> Bytes => _value;
 
-    // Private constructor to enforce creation via factory methods
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Gusid"/>
+    /// </summary>
+    /// <param name="value">An array of bytes used to store the byte values that are then converted to a string.</param>
+    /// <exception cref="ArgumentException">Thrown when the value is not 16 bytes long.</exception>
     private Gusid(byte[] value) : this()
     {
         if (value.Length != Size)
@@ -16,7 +25,29 @@ public readonly struct Gusid :
         _value = value;
     }
 
-    // Factory method to create a new Gusid
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Gusid"/>
+    /// </summary>
+    /// <param name="value">
+    /// A read-only span of bytes used to store the byte values that are then converted to a string. 
+    // </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the value is not 16 bytes long. 
+    // </exception>
+    private Gusid(Span<byte> value) : this(value.ToArray())
+    {
+    }
+
+    /// <summary>
+    /// Generates a new Gusid (Globally Unique Sequential Identifier).
+    /// </summary>
+    /// <returns>
+    /// A new instance of <see cref="Gusid"/> containing a unique identifier.
+    /// </returns>
+    /// <remarks>
+    /// The identifier is composed of a 4-byte timestamp (seconds since Unix epoch) 
+    /// followed by 12 random bytes, ensuring both uniqueness and sequentiality.
+    /// </remarks>
     public static Gusid New()
     {
         Span<byte> value = stackalloc byte[Size];
@@ -33,10 +64,16 @@ public readonly struct Gusid :
         timeStampBytes.CopyTo(value);
         random.CopyTo(value[4..]);
 
-        return new Gusid(value.ToArray()); // Convert Span to array
+        return new Gusid(value);
     }
 
-    // parse from readonlyspan<char>
+    /// <summary>
+    /// Converts the string representation of a Gusid to its <see cref="Gusid"/> equivalent.
+    /// </summary>
+    /// <param name="s">A string containing the Gusid to convert.</param>
+    /// <param name="provider">An object that supplies culture-specific formatting information.</param>
+    /// <returns>A <see cref="Gusid"/> equivalent to the Gusid contained in <paramref name="s"/>.</returns>
+    /// <exception cref="FormatException">Thrown when the Gusid is not in the correct format.</exception>
     public static Gusid Parse(ReadOnlySpan<char> s, IFormatProvider? provider = null)
     {
         if (TryParse(s, provider, out var result))
@@ -45,7 +82,13 @@ public readonly struct Gusid :
         throw new FormatException("invalid gusid format.");
     }
 
-    // TryParse from ReadOnlySpan<char>
+    /// <summary>
+    /// Converts the string representation of a Gusid to its <see cref="Gusid"/> equivalent.
+    /// </summary>
+    /// <param name="s">A string containing the Gusid to convert.</param>
+    /// <param name="provider">An object that supplies culture-specific formatting information.</param>
+    /// <param name="result">When this method returns, contains the <see cref="Gusid"/> equivalent of the Gusid contained in <paramref name="s"/>, if the conversion succeeded, or default if the conversion failed.</param>
+    /// <returns><see langword="true"/> if the Gusid was converted successfully; otherwise, <see langword="false"/>.</returns>
     public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out Gusid result)
     {
         if (s.Length != Size * 2) // Each byte is represented as 2 hex characters
@@ -68,22 +111,45 @@ public readonly struct Gusid :
         return true;
     }
 
-    // Equals methods
+    /// <summary>
+    /// Converts the string representation of a Gusid to its <see cref="Gusid"/> equivalent.
+    /// </summary>
+    /// <param name="other">A string containing the Gusid to convert.</param>
+    /// <returns>A <see cref="Gusid"/> equivalent to the Gusid contained in <paramref name="other"/>.</returns>
     public bool Equals(Gusid other) => _value.AsSpan().SequenceEqual(other._value.AsSpan());
 
+    /// <summary>
+    /// Determines whether the specified object is equal to the current object.
+    /// </summary>
+    /// <param name="obj">The object to compare with the current object.</param>
+    /// <returns><see langword="true"/> if the specified object is equal to the current object; otherwise, <see langword="false"/>.</returns>
     public override bool Equals(object? obj) => obj is Gusid other && Equals(other);
 
+    /// <summary>
+    /// Returns a string representation of the <see cref="Gusid"/>
+    /// </summary>
+    /// <param name="format">
+    /// A format string. 
+    // </param>
+    /// <param name="formatProvider">
+    /// An object that supplies culture-specific formatting information.  
+    /// </param>
+    /// <returns>A string representation of the <see cref="Gusid"/></returns>
     public readonly override string ToString()
-    {
-        return ToString(null, null);
-    }
-
-    public readonly string ToString(string? format, IFormatProvider? formatProvider)
     {
         return Convert.ToHexStringLower(_value);
     }
 
-    // CompareTo methods
+    /// <summary>
+    /// Compares the current instance with another object of the same type and returns an integer that indicates whether the current instance precedes, follows, or occurs in the same position in the sort order as the other object.
+    /// </summary>
+    /// <param name="obj">An object to compare with this instance.</param>
+    /// <returns>
+    /// A value that indicates the relative order of the objects being compared.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the object is not a Gusid. 
+    /// </exception>
     public int CompareTo(object? obj)
     {
         if (obj is Gusid other)
@@ -91,7 +157,13 @@ public readonly struct Gusid :
 
         throw new ArgumentException("Object is not a Gusid.");
     }
-
+    /// <summary>
+    /// Compares the current instance with another object of the same type and returns an integer that indicates whether the current instance precedes, follows, or occurs in the same position in the sort order as the other object.
+    /// </summary>
+    /// <param name="other">An object to compare with this instance.</param>
+    /// <returns>
+    /// A value that indicates the relative order of the objects being compared.
+    /// </returns>
     public int CompareTo(Gusid other)
     {
         for (int i = 0; i < Size; i++)
@@ -102,14 +174,24 @@ public readonly struct Gusid :
         return 0;
     }
 
-    // GetHashCode
-    public override int GetHashCode() => HashCode.Combine(_value[0], _value[1], _value[2], _value[3]);
-
-    // Operators
+    /// <inheritdoc/>
     public static bool operator ==(Gusid left, Gusid right) => left.Equals(right);
+    /// <inheritdoc/>
     public static bool operator !=(Gusid left, Gusid right) => !(left == right);
+    /// <inheritdoc/>
     public static bool operator <(Gusid left, Gusid right) => left.CompareTo(right) < 0;
+    /// <inheritdoc/>
     public static bool operator <=(Gusid left, Gusid right) => left.CompareTo(right) <= 0;
+    /// <inheritdoc/>
     public static bool operator >(Gusid left, Gusid right) => left.CompareTo(right) > 0;
+    /// <inheritdoc/>
     public static bool operator >=(Gusid left, Gusid right) => left.CompareTo(right) >= 0;
+
+    /// <inheritdoc/>
+    public override int GetHashCode()
+    {
+        HashCode hash = new();
+        hash.AddBytes(_value);
+        return hash.ToHashCode();
+    }
 }
