@@ -1,0 +1,42 @@
+name: .NET
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore Dependencies
+      run: dotnet restore UniqueIdentifier.sln
+
+    - name: Build
+      run: dotnet build --configuration Release UniqueIdentifier.sln -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
+
+    - name: Run Benchmarks
+      run: dotnet run --project UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj
+
+    - name: Create the package
+      run: dotnet pack --configuration Release UniqueIdentifier/UniqueIdentifier.csproj -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: UniqueIdentifier
+        path: UniqueIdentifier/bin/Release/net9.0/publish
+        if-no-files-found: error
+
+    - name: NuGet push
+      run: dotnet nuget push "UniqueIdentifier/bin/Release/*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
