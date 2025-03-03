@@ -24,9 +24,15 @@ jobs:
 
     - name: Build
       run: dotnet build -c Release UniqueIdentifier.sln -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
+    
+    - name: Run Tests
+      run: dotnet test -c Release --no-build UniqueIdentifier.Tests/UniqueIdentifier.Tests.csproj
 
     - name: Run Benchmarks
       run: dotnet run -c Release --project UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj
+
+    - name: Publish
+      run: dotnet publish -c Release UniqueIdentifier/UniqueIdentifier.csproj
 
     - name: Create the package
       run: dotnet pack -c Release UniqueIdentifier/UniqueIdentifier.csproj -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
