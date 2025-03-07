@@ -29,7 +29,7 @@ jobs:
       run: dotnet test -c Release --no-build src/UniqueIdentifier.Tests/UniqueIdentifier.Tests.csproj
 
     - name: Run Benchmarks
-      run: dotnet run -c Release --project UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj
+      run: dotnet run -c Release --project src/UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj
 
     - name: Publish
       run: dotnet publish -c Release src/UniqueIdentifier/UniqueIdentifier.csproj
