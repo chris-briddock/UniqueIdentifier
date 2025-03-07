@@ -7,10 +7,8 @@ public readonly struct Gusid :
     IComparable, IComparable<Gusid>,
     IEquatable<Gusid>
 {
-    private const int Size = 16; // 128 bits (16 bytes)
+    private const int Size = 16;
     private readonly byte[] _value;
-
-    private Span<byte> Bytes => _value;
 
 
     /// <summary>
@@ -23,19 +21,6 @@ public readonly struct Gusid :
         if (value.Length != Size)
             throw new ArgumentException($"Gusid must be {Size} bytes long.", nameof(value));
         _value = value;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Gusid"/>
-    /// </summary>
-    /// <param name="value">
-    /// A read-only span of bytes used to store the byte values that are then converted to a string. 
-    // </param>
-    /// <exception cref="ArgumentException">
-    /// Thrown when the value is not 16 bytes long. 
-    // </exception>
-    private Gusid(Span<byte> value) : this(value.ToArray())
-    {
     }
 
     /// <summary>
@@ -64,7 +49,7 @@ public readonly struct Gusid :
         timeStampBytes.CopyTo(value);
         random.CopyTo(value[4..]);
 
-        return new Gusid(value);
+        return new Gusid(value.ToArray());
     }
 
     /// <summary>

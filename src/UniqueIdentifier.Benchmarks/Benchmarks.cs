@@ -8,7 +8,6 @@ namespace UniqueIdentifier.Benchmarks;
 [RankColumn]
 public class Benchmarks
 {
-    private const int IterationCount = 10000;
 
     [Benchmark(Description = "GUSID Generation")]
     [Arguments(1)]
@@ -31,6 +30,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Parsing")]
+     [Arguments(1)]
     public Gusid BenchmarkParsing()
     {
         string sampleGusid = "01234567890ABCDEF0123456789ABCDE";
@@ -38,6 +38,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Comparison")]
+     [Arguments(1)]
     public int BenchmarkComparison()
     {
         var gusid1 = Gusid.New();
@@ -46,18 +47,19 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Sorting")]
-    public Gusid[] BenchmarkSorting()
+    [Arguments(1000)]
+    public void BenchmarkSorting(int count)
     {
-        Gusid[] guids = [];
-        for (int i = 0; i < IterationCount; i++)
+        Gusid[] guids = new Gusid[count];
+        for (int i = 0; i < count; i++)
         {
             guids[i] = Gusid.New();
         }
         Array.Sort(guids);
-        return guids;
     }
 
     [Benchmark(Description = "GUSID Serialization")]
+     [Arguments(1)]
     public string BenchmarkToString()
     {
         var gusid = Gusid.New();
@@ -65,10 +67,11 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Uniqueness")]
-    public bool BenchmarkUniqueness()
+    [Arguments(1000)]
+    public bool BenchmarkUniqueness(int count)
     {
         HashSet<Gusid> uniqueSet = [];
-        for (int i = 0; i < IterationCount; i++)
+        for (int i = 0; i < count; i++)
         {
             var gusid = Gusid.New();
             if (!uniqueSet.Add(gusid))
@@ -80,6 +83,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Equality")]
+     [Arguments(1)]
     public bool BenchmarkEquality()
     {
         var gusid1 = Gusid.New();
@@ -88,6 +92,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Hashing")]
+     [Arguments(1)]
     public int BenchmarkHashCode()
     {
         var gusid = Gusid.New();
@@ -115,6 +120,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Parsing")]
+    [Arguments(1)]
     public Guid BenchmarkGuidParsing()
     {
         string sampleGuid = "01234567-89AB-CDEF-0123-456789ABCDEF";
@@ -122,6 +128,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Comparison")]
+    [Arguments(1)]
     public int BenchmarkGuidComparison()
     {
         var guid1 = Guid.NewGuid();
@@ -130,10 +137,11 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Sorting")]
-    public Guid[] BenchmarkGuidSorting()
+    [Arguments(1000)]
+    public Guid[] BenchmarkGuidSorting(int count)
     {
-        Guid[] guids = new Guid[IterationCount];
-        for (int i = 0; i < IterationCount; i++)
+        Guid[] guids = new Guid[count];
+        for (int i = 0; i < count; i++)
         {
             guids[i] = Guid.NewGuid();
         }
@@ -142,6 +150,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Serialization")]
+    [Arguments(1)]
     public string BenchmarkGuidToString()
     {
         var guid = Guid.NewGuid();
@@ -149,10 +158,11 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Uniqueness")]
-    public bool BenchmarkGuidUniqueness()
+    [Arguments(1000)]
+    public bool BenchmarkGuidUniqueness(int count)
     {
-        HashSet<Guid> uniqueSet = new HashSet<Guid>();
-        for (int i = 0; i < IterationCount; i++)
+        HashSet<Guid> uniqueSet = [];
+        for (int i = 0; i < count; i++)
         {
             var guid = Guid.NewGuid();
             if (!uniqueSet.Add(guid))
@@ -164,6 +174,7 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Equality")]
+    [Arguments(1)]
     public bool BenchmarkGuidEquality()
     {
         var guid1 = Guid.NewGuid();
@@ -172,93 +183,10 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Hashing")]
+    [Arguments(1)]
     public int BenchmarkGuidHashCode()
     {
         var guid = Guid.NewGuid();
         return guid.GetHashCode();
-    }
-
-    // Benchmark for ULID
-    [Benchmark(Description = "ULID Generation")]
-    [Arguments(1)]
-    public Ulid BenchmarkUlidGeneration(int count)
-    {
-        return Ulid.NewUlid();
-    }
-
-    [Benchmark(Description = "ULID Bulk Generation")]
-    [Arguments(1000)]
-    public Ulid[] BenchmarkUlidBulkGeneration(int count)
-    {
-        Ulid[] ulids = new Ulid[count];
-        for (int i = 0; i < count; i++)
-        {
-            ulids[i] = Ulid.NewUlid();
-        }
-        return ulids;
-    }
-
-    [Benchmark(Description = "ULID Parsing")]
-    public Ulid BenchmarkUlidParsing()
-    {
-        string sampleUlid = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
-        return Ulid.Parse(sampleUlid);
-    }
-
-    [Benchmark(Description = "ULID Comparison")]
-    public int BenchmarkUlidComparison()
-    {
-        var ulid1 = Ulid.NewUlid();
-        var ulid2 = Ulid.NewUlid();
-        return ulid1.CompareTo(ulid2);
-    }
-
-    [Benchmark(Description = "ULID Sorting")]
-    public Ulid[] BenchmarkUlidSorting()
-    {
-        Ulid[] ulids = new Ulid[IterationCount];
-        for (int i = 0; i < IterationCount; i++)
-        {
-            ulids[i] = Ulid.NewUlid();
-        }
-        Array.Sort(ulids);
-        return ulids;
-    }
-
-    [Benchmark(Description = "ULID Serialization")]
-    public string BenchmarkUlidToString()
-    {
-        var ulid = Ulid.NewUlid();
-        return ulid.ToString();
-    }
-
-    [Benchmark(Description = "ULID Uniqueness")]
-    public bool BenchmarkUlidUniqueness()
-    {
-        HashSet<Ulid> uniqueSet = new HashSet<Ulid>();
-        for (int i = 0; i < IterationCount; i++)
-        {
-            var ulid = Ulid.NewUlid();
-            if (!uniqueSet.Add(ulid))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    [Benchmark(Description = "ULID Equality")]
-    public bool BenchmarkUlidEquality()
-    {
-        var ulid1 = Ulid.NewUlid();
-        var ulid2 = ulid1;
-        return ulid1 == ulid2;
-    }
-
-    [Benchmark(Description = "ULID Hashing")]
-    public int BenchmarkUlidHashCode()
-    {
-        var ulid = Ulid.NewUlid();
-        return ulid.GetHashCode();
     }
 }

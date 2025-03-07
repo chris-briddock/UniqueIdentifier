@@ -20,29 +20,29 @@ jobs:
         dotnet-version: 9.0.x
 
     - name: Restore Dependencies
-      run: dotnet restore UniqueIdentifier.sln
+      run: dotnet restore src/UniqueIdentifier.sln
 
     - name: Build
-      run: dotnet build -c Release UniqueIdentifier.sln -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
+      run: dotnet build -c Release src/UniqueIdentifier.sln -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
     
     - name: Run Tests
-      run: dotnet test -c Release --no-build UniqueIdentifier.Tests/UniqueIdentifier.Tests.csproj
+      run: dotnet test -c Release --no-build src/UniqueIdentifier.Tests/UniqueIdentifier.Tests.csproj
 
     - name: Run Benchmarks
       run: dotnet run -c Release --project UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj
 
     - name: Publish
-      run: dotnet publish -c Release UniqueIdentifier/UniqueIdentifier.csproj
+      run: dotnet publish -c Release src/UniqueIdentifier/UniqueIdentifier.csproj
 
     - name: Create the package
-      run: dotnet pack -c Release UniqueIdentifier/UniqueIdentifier.csproj -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
+      run: dotnet pack -c Release src/UniqueIdentifier/UniqueIdentifier.csproj -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: UniqueIdentifier
-        path: UniqueIdentifier/bin/Release
+        path: src/UniqueIdentifier/bin/Release
         if-no-files-found: error
 
     - name: NuGet push
-      run: dotnet nuget push "UniqueIdentifier/bin/Release/net9.0/*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push "src/UniqueIdentifier/bin/Release/net9.0/*.nupkg" -k ${{secrets.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json --skip-duplicate

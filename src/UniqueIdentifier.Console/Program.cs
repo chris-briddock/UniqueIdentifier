@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace UniqueIdentifier.Console;
+﻿namespace UniqueIdentifier.Console;
 
 internal class Program
 {
