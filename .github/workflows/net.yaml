@@ -45,4 +45,4 @@ jobs:
         if-no-files-found: error
 
     - name: NuGet push
-      run: dotnet nuget push "src/UniqueIdentifier/bin/Release/net9.0/*.nupkg" -k ${{secrets.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push "src/UniqueIdentifier/bin/Release/*.nupkg" -k ${{secrets.NUGET_API_KEY}} -s https://api.nuget.org/v3/index.json --skip-duplicate
