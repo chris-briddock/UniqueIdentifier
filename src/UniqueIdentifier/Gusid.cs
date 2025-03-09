@@ -1,16 +1,12 @@
-﻿namespace UniqueIdentifier;
+﻿namespace System;
 
 /// <summary>
-/// Represents a globally unique sortable identifier.
+/// Represents a globally unique sequential identifier.
 /// </summary>
-public readonly struct Gusid :
-    IComparable, IComparable<Gusid>,
-    IEquatable<Gusid>
+public readonly struct Gusid : IComparable, IComparable<Gusid>, IEquatable<Gusid>
 {
     private const int Size = 16;
     private readonly byte[] _value;
-
-
     /// <summary>
     /// Initializes a new instance of the <see cref="Gusid"/>
     /// </summary>
