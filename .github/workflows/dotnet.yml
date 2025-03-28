@@ -93,7 +93,7 @@ jobs:
         path: src/
 
     - name: Pack NuGet Package
-      run: dotnet pack --configuration Release --no-build src/UniqueIdentifier/UniqueIdentifier.csproj -o out
+      run: dotnet pack --configuration Release src/UniqueIdentifier/UniqueIdentifier.csproj -o out
 
     - name: Upload NuGet Package Artifact
       uses: actions/upload-artifact@v4
