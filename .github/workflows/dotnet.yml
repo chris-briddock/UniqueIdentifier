@@ -1,0 +1,111 @@
+name: .NET CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore src/UniqueIdentifier.sln
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore src/UniqueIdentifier.sln
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          src/**/bin/Release
+          !src/**/bin/Release/net9.0/ref
+        if-no-files-found: error
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: src/
+
+    - name: Run Tests
+      run: dotnet test --configuration Release --no-build src/UniqueIdentifier.Tests/UniqueIdentifier.Tests.csproj --logger trx --results-directory TestResults
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: TestResults/*.trx
+        if-no-files-found: warn
+
+    - name: Run Benchmarks
+      run: dotnet run --configuration Release --project src/UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj -- --filter *
+
+    - name: Upload Benchmark Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: src/UniqueIdentifier.Benchmarks/BenchmarkDotNet.Artifacts/results
+        if-no-files-found: warn
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: src/
+
+    - name: Pack NuGet Package
+      run: dotnet pack --configuration Release --no-build src/UniqueIdentifier/UniqueIdentifier.csproj -o out
+
+    - name: Upload NuGet Package Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package
+        path: out/*.nupkg
+        if-no-files-found: error
+
+    - name: Add GitHub NuGet Source
+      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
+
+    - name: Push NuGet Package to GitHub Packages
+      run: dotnet nuget push "out/*.nupkg" --source "github" --skip-duplicate
+      env:
+        NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
