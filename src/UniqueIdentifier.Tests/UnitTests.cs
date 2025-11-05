@@ -253,12 +253,24 @@ public class Tests
     }
 
     [Test]
-    public void New_GeneratesManyIds_PerformanceTest()
+    public void New_GeneratesManyIds_PerformanceTest_CryptographicallyInsecure()
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         for (int i = 0; i < 5_000_000; i++)
         {
             var gusid = Gusid.New();
+        }
+        stopwatch.Stop();
+        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(1000));
+    }
+
+    [Test]
+    public void New_GeneratesManyIds_PerformanceTest_CryptographicallySecure()
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < 2_500_000; i++)
+        {
+            var gusid = Gusid.New(true);
         }
         stopwatch.Stop();
         Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(1000));

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Security.Cryptography;
 
 namespace UniqueIdentifier; // Or a namespace of your choice
 
@@ -47,15 +48,23 @@ public readonly struct Gusid :
     /// (split into three 4-byte chunks), ensuring both uniqueness and sequentiality.
     /// The first uint (_a) is the timestamp, making sorting by Gusid equivalent to sorting by creation time.
     /// </remarks>
-    public static Gusid New()
+    public static Gusid New(bool IsSecure = false)
     {
         // Get a 4-byte timestamp stored directly as a uint.
         var timestamp = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         Span<byte> randomBytes = stackalloc byte[12];
 
-        // Get 12 random bytes on the stack.
-        Random.Shared.NextBytes(randomBytes);
+        if (IsSecure)
+        {
+            RandomNumberGenerator.Fill(randomBytes);
+
+        }
+        else
+        {
+            Random.Shared.NextBytes(randomBytes);
+        }
+
 
         // Convert the 12 random bytes into three 32-bit unsigned integers.
         var r1 = BitConverter.ToUInt32(randomBytes.Slice(0, 4));
