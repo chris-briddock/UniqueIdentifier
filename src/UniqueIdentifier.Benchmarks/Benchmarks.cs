@@ -17,6 +17,13 @@ public class Benchmarks
         return Gusid.New();
     }
 
+    [Benchmark(Description = "GUSID Generation (Secure)")]
+    [Arguments(1)]
+    public Gusid BenchmarkSecureGeneration(int count)
+    {
+        return Gusid.New(true);
+    }
+
     [Benchmark(Description = "GUSID Bulk Generation")]
     [Arguments(1000)]
     public Gusid[] BenchmarkBulkGeneration(int count)
@@ -29,8 +36,19 @@ public class Benchmarks
         return guids;
     }
 
+    [Benchmark(Description = "GUSID Bulk Generation (Secure)")]
+    [Arguments(1000)]
+    public Gusid[] BenchmarkSecureBulkGeneration(int count)
+    {
+        Gusid[] guids = new Gusid[count];
+        for (int i = 0; i < count; i++)
+        {
+            guids[i] = Gusid.New(true);
+        }
+        return guids;
+    }
+
     [Benchmark(Description = "GUSID Parsing")]
-     [Arguments(1)]
     public Gusid BenchmarkParsing()
     {
         string sampleGusid = "01234567890ABCDEF0123456789ABCDE";
@@ -38,7 +56,6 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Comparison")]
-     [Arguments(1)]
     public int BenchmarkComparison()
     {
         var gusid1 = Gusid.New();
@@ -58,8 +75,19 @@ public class Benchmarks
         Array.Sort(guids);
     }
 
+    [Benchmark(Description = "GUSID Sorting (Secure)")]
+    [Arguments(1000)]
+    public void BenchmarkSecureSorting(int count)
+    {
+        Gusid[] guids = new Gusid[count];
+        for (int i = 0; i < count; i++)
+        {
+            guids[i] = Gusid.New(true);
+        }
+        Array.Sort(guids);
+    }
+
     [Benchmark(Description = "GUSID Serialization")]
-     [Arguments(1)]
     public string BenchmarkToString()
     {
         var gusid = Gusid.New();
@@ -82,8 +110,23 @@ public class Benchmarks
         return true;
     }
 
+    [Benchmark(Description = "GUSID Uniqueness (Secure)")]
+    [Arguments(1000)]
+    public bool BenchmarkSecureUniqueness(int count)
+    {
+        HashSet<Gusid> uniqueSet = [];
+        for (int i = 0; i < count; i++)
+        {
+            var gusid = Gusid.New(true);
+            if (!uniqueSet.Add(gusid))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     [Benchmark(Description = "GUSID Equality")]
-     [Arguments(1)]
     public bool BenchmarkEquality()
     {
         var gusid1 = Gusid.New();
@@ -92,7 +135,6 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "GUSID Hashing")]
-     [Arguments(1)]
     public int BenchmarkHashCode()
     {
         var gusid = Gusid.New();
@@ -120,7 +162,6 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Parsing")]
-    [Arguments(1)]
     public Guid BenchmarkGuidParsing()
     {
         string sampleGuid = "01234567-89AB-CDEF-0123-456789ABCDEF";
@@ -128,7 +169,6 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Comparison")]
-    [Arguments(1)]
     public int BenchmarkGuidComparison()
     {
         var guid1 = Guid.NewGuid();
@@ -150,7 +190,6 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Serialization")]
-    [Arguments(1)]
     public string BenchmarkGuidToString()
     {
         var guid = Guid.NewGuid();
@@ -174,7 +213,6 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Equality")]
-    [Arguments(1)]
     public bool BenchmarkGuidEquality()
     {
         var guid1 = Guid.NewGuid();
@@ -183,7 +221,6 @@ public class Benchmarks
     }
 
     [Benchmark(Description = "Guid Hashing")]
-    [Arguments(1)]
     public int BenchmarkGuidHashCode()
     {
         var guid = Guid.NewGuid();

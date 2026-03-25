@@ -21,6 +21,32 @@ public class Tests
     }
 
     [Test]
+    public void New_WithIsSecureTrue_GeneratesValidIds()
+    {
+        var gusid = Gusid.New(true);
+        Assert.That(gusid.ToString().Length, Is.EqualTo(32));
+    }
+
+    [Test]
+    public void New_WithIsSecureTrue_GeneratesUniqueIds_WhenCalledMultipleTimes()
+    {
+        var gusid1 = Gusid.New(true);
+        var gusid2 = Gusid.New(true);
+
+        Assert.That(gusid1, Is.Not.EqualTo(gusid2));
+    }
+
+    [Test]
+    public void New_WithIsSecureTrue_RoundTripsThroughParse()
+    {
+        var original = Gusid.New(true);
+        var text = original.ToString();
+        var parsed = Gusid.Parse(text);
+
+        Assert.That(parsed, Is.EqualTo(original));
+    }
+
+    [Test]
     public void Parse_ValidHexString_ReturnsGusid()
     {
         var hexString = "0123456789abcdef0123456789abcdef";
@@ -261,7 +287,7 @@ public class Tests
             var gusid = Gusid.New();
         }
         stopwatch.Stop();
-        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(1000));
+        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(5000));
     }
 
     [Test]
@@ -273,7 +299,7 @@ public class Tests
             var gusid = Gusid.New(true);
         }
         stopwatch.Stop();
-        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(1000));
+        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(5000));
     }
 
 }

@@ -1,8 +1,7 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 
-namespace UniqueIdentifier; // Or a namespace of your choice
+namespace UniqueIdentifier;
 
 /// <summary>
 /// Represents a globally unique sequential identifier (Gusid).
@@ -15,6 +14,8 @@ public readonly struct Gusid :
     IEquatable<Gusid>, 
     IFormattable
 {
+    private static readonly Random s_random = new();
+
     // The 16 bytes are stored internally as four 32-bit unsigned integers.
     // This makes Gusid a true 16-byte value type, avoiding heap
     // allocations for its internal state.
@@ -62,7 +63,7 @@ public readonly struct Gusid :
         }
         else
         {
-            Random.Shared.NextBytes(randomBytes);
+            s_random.NextBytes(randomBytes);
         }
 
 
