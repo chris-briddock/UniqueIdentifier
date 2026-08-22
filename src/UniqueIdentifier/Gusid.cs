@@ -1,4 +1,7 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 namespace UniqueIdentifier;
@@ -14,7 +17,51 @@ public readonly struct Gusid :
     IEquatable<Gusid>, 
     IFormattable
 {
-    private static readonly Random s_random = new();
+    // Insecure generation state.
+    //
+    // A single shared Random instance is not safe for concurrent use (its
+    // internal state can be corrupted, degrading output to zeros). Using a
+    // per-thread instance avoids locks entirely: no contention and no
+    // synchronization overhead.
+    private static int s_seed = Environment.TickCount;
+
+    [ThreadStatic]
+    private static Random? t_random;
+
+    // Timestamp cache.
+    //
+    // DateTimeOffset.UtcNow.ToUnixTimeSeconds() is one of the slowest parts
+    // of identifier generation on most platforms: it performs a wall-clock
+    // read followed by epoch-conversion arithmetic. Stopwatch.GetTimestamp()
+    // is significantly cheaper (a single monotonic counter read with no
+    // epoch math), so the expensive conversion is performed at most once per
+    // elapsed second and every other call within that second simply reloads
+    // the cached value.
+    //
+    // The monotonic counter also makes the timestamp immune to system clock
+    // adjustments: it is non-decreasing for the lifetime of the process,
+    // which preserves the sequentiality guarantee of the identifier.
+    private static readonly long s_startTimestamp = Stopwatch.GetTimestamp();
+    private static readonly long s_baseUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    private static volatile uint s_cachedTimestamp; // 0 forces a refresh on the very first call
+    private static long s_nextSecondBoundary; // read and written via interlocked semantics on 64-bit runtimes
+
+    // Secure generation state.
+    //
+    // RandomNumberGenerator.Fill performs an OS syscall on every call, which
+    // dominates the cost of secure generation. Instead, each thread keeps a
+    // buffer of CSPRNG output and refills it only when exhausted. Every byte
+    // is drawn from the OS CSPRNG and is used exactly once, so the output
+    // remains cryptographically secure while amortizing the syscall cost
+    // across hundreds of identifiers.
+    private const int RandomBytesPerId = 12;
+    private const int SecureBufferSize = 512 * RandomBytesPerId; // 512 IDs per OS refill
+
+    [ThreadStatic]
+    private static byte[]? t_secureBuffer;
+
+    [ThreadStatic]
+    private static int t_secureOffset;
 
     // The 16 bytes are stored internally as four 32-bit unsigned integers.
     // This makes Gusid a true 16-byte value type, avoiding heap
@@ -49,30 +96,129 @@ public readonly struct Gusid :
     /// (split into three 4-byte chunks), ensuring both uniqueness and sequentiality.
     /// The first uint (_a) is the timestamp, making sorting by Gusid equivalent to sorting by creation time.
     /// </remarks>
-    public static Gusid New(bool IsSecure = false)
+    // The default value is intentionally retained for API compatibility even
+    // though the parameterless New() overload exists and shadows it; callers
+    // that explicitly pass `false` continue to compile.
+#pragma warning disable S3427 // Parameterized overload shadows the parameterless one; only used for explicit IsSecure choice.
+    public static Gusid New(bool IsSecure = false) =>
+        IsSecure ? NewSecure() : New();
+#pragma warning restore S3427
+
+    /// <summary>
+    /// Generates a new Gusid using a fast, non-cryptographic random source.
+    /// </summary>
+    /// <returns>A new instance of <see cref="Gusid"/> containing a unique identifier.</returns>
+    /// <remarks>
+    /// This method is allocation-free (after the first call on each thread) and
+    /// lock-free. Each thread uses its own <see cref="Random"/> instance, so
+    /// concurrent callers never contend on shared state.
+    /// Do not use this overload for security-sensitive purposes; use
+    /// <see cref="NewSecure"/> instead.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Gusid New()
     {
-        // Get a 4-byte timestamp stored directly as a uint.
-        var timestamp = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-        Span<byte> randomBytes = stackalloc byte[12];
-
-        if (IsSecure)
+        var random = t_random;
+        if (random is null)
         {
-            RandomNumberGenerator.Fill(randomBytes);
-
-        }
-        else
-        {
-            s_random.NextBytes(randomBytes);
+            // The increment of the process-unique seed guarantees a distinct
+            // seed for every thread.
+#pragma warning disable S2245 // Intentional: this is the non-cryptographic fast path; use NewSecure() for security-sensitive purposes.
+            random = t_random = new Random(Interlocked.Increment(ref s_seed));
+#pragma warning restore S2245
         }
 
+        // Three full-range Next calls are cheaper than filling a 12-byte span.
+        var r1 = (uint)random.Next(int.MinValue, int.MaxValue);
+        var r2 = (uint)random.Next(int.MinValue, int.MaxValue);
+        var r3 = (uint)random.Next(int.MinValue, int.MaxValue);
 
-        // Convert the 12 random bytes into three 32-bit unsigned integers.
-        var r1 = BitConverter.ToUInt32(randomBytes.Slice(0, 4));
-        var r2 = BitConverter.ToUInt32(randomBytes.Slice(4, 4));
-        var r3 = BitConverter.ToUInt32(randomBytes.Slice(8, 4));
+        return new Gusid(GetTimestamp(), r1, r2, r3);
+    }
 
-        return new Gusid(timestamp, r1, r2, r3);
+    /// <summary>
+    /// Generates a new Gusid using a cryptographically secure random source.
+    /// </summary>
+    /// <returns>A new instance of <see cref="Gusid"/> containing a unique identifier.</returns>
+    /// <remarks>
+    /// Random bytes are drawn from the operating system's CSPRNG. To avoid an
+    /// expensive syscall per identifier, each thread maintains a buffer of
+    /// CSPRNG output that is refilled only when exhausted (once per 512 IDs).
+    /// Every random byte is used exactly once, preserving the security
+    /// properties of the underlying generator.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Gusid NewSecure()
+    {
+        var buffer = t_secureBuffer;
+        var offset = t_secureOffset;
+
+        if (buffer is null || offset + RandomBytesPerId > buffer.Length)
+        {
+            if (buffer is null)
+            {
+                buffer = new byte[SecureBufferSize];
+                t_secureBuffer = buffer;
+            }
+
+            RandomNumberGenerator.Fill(buffer);
+            offset = 0;
+        }
+
+        // Reinterpret the 12 buffered bytes as three uints without any
+        // bounds checking or copying.
+        var randomUInts = MemoryMarshal.Cast<byte, uint>(
+            buffer.AsSpan(offset, RandomBytesPerId));
+
+        t_secureOffset = offset + RandomBytesPerId;
+
+        return new Gusid(GetTimestamp(), randomUInts[0], randomUInts[1], randomUInts[2]);
+    }
+
+    /// <summary>
+    /// Returns the current Unix time in seconds, served from a process-wide
+    /// cache that is refreshed at most once per elapsed second.
+    /// </summary>
+    /// <remarks>
+    /// The fast path is a cheap monotonic counter read plus two volatile
+    /// reads, avoiding the wall-clock and epoch-conversion work of
+    /// <see cref="DateTimeOffset.UtcNow"/> on every identifier.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint GetTimestamp()
+    {
+        var now = Stopwatch.GetTimestamp();
+        var timestamp = s_cachedTimestamp;
+        // A benign data race here is harmless: concurrent refreshes compute
+        // the same second value, and a slightly late refresh only means the
+        // wall-clock read happens one call later.
+        if (timestamp == 0 || now >= Interlocked.Read(ref s_nextSecondBoundary))
+        {
+            return RefreshTimestamp(now);
+        }
+        return timestamp;
+    }
+
+    /// <summary>
+    /// Slow path for <see cref="GetTimestamp"/>: performs the epoch
+    /// conversion once and caches the result together with the monotonic
+    /// counter value at which the current second expires.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static uint RefreshTimestamp(long now)
+    {
+        var elapsed = now - s_startTimestamp;
+        var frequency = Stopwatch.Frequency;
+        var wholeSeconds = elapsed / frequency;
+        var remainder = elapsed % frequency;
+
+        var timestamp = (uint)(s_baseUnixSeconds + wholeSeconds);
+        s_cachedTimestamp = timestamp;
+        // Use Interlocked.Exchange so the 64-bit write is atomic on 32-bit
+        // runtimes and participates in the same happens-before edge that
+        // protects the volatile timestamp write above.
+        Interlocked.Exchange(ref s_nextSecondBoundary, now + (frequency - remainder));
+        return timestamp;
     }
 
     /// <summary>
@@ -126,6 +272,7 @@ public readonly struct Gusid :
     /// Indicates whether the current object is equal to another object of the same type.
     /// This operation is highly efficient as it's a direct field comparison.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Equals(Gusid other) => _a == other._a && _b == other._b && _c == other._c && _d == other._d;
 
     /// <summary>
@@ -161,6 +308,7 @@ public readonly struct Gusid :
     /// Compares the current instance with another <see cref="Gusid"/>.
     /// This operation is highly efficient and leverages the timestamp for sequential sorting.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int CompareTo(Gusid other)
     {
         // Compare the timestamp first for sorting.
@@ -188,6 +336,7 @@ public readonly struct Gusid :
     /// Returns a hash code for the current <see cref="Gusid"/>.
     /// This operation is highly efficient by combining the hash codes of the internal fields.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int GetHashCode()
     {
         // The HashCode struct provides a high-quality way to combine hash codes.
