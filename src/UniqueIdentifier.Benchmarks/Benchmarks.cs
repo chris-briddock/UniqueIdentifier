@@ -76,6 +76,10 @@ public class Benchmarks
     [BenchmarkCategory("Generation")]
     public Guid GuidGeneration() => Guid.NewGuid();
 
+    [Benchmark(Description = "Guid.CreateVersion7()")]
+    [BenchmarkCategory("Generation")]
+    public Guid GuidV7Generation() => Guid.CreateVersion7();
+
     // =====================================================================
     // Bulk generation — end-to-end creation of 1,000 identifiers.
     // =====================================================================
@@ -97,6 +101,16 @@ public class Benchmarks
         var values = new Guid[Count];
         for (var i = 0; i < Count; i++)
             values[i] = Guid.NewGuid();
+        return values;
+    }
+
+    [Benchmark(Description = "Guid.CreateVersion7() x1000")]
+    [BenchmarkCategory("BulkGeneration")]
+    public Guid[] GuidV7BulkGeneration()
+    {
+        var values = new Guid[Count];
+        for (var i = 0; i < Count; i++)
+            values[i] = Guid.CreateVersion7();
         return values;
     }
 
@@ -210,6 +224,17 @@ public class Benchmarks
         return values;
     }
 
+    [Benchmark(Description = "Guid.CreateVersion7() x1000 + Sort")]
+    [BenchmarkCategory("Workloads")]
+    public Guid[] GuidV7GenerateAndSort()
+    {
+        var values = new Guid[Count];
+        for (var i = 0; i < Count; i++)
+            values[i] = Guid.CreateVersion7();
+        Array.Sort(values);
+        return values;
+    }
+
     [Benchmark(Description = "Gusid.New() x1000 + HashSet dedupe")]
     [BenchmarkCategory("Workloads")]
     public bool GusidGenerateAndDedupe()
@@ -231,6 +256,19 @@ public class Benchmarks
         for (var i = 0; i < Count; i++)
         {
             if (!set.Add(Guid.NewGuid()))
+                return false;
+        }
+        return true;
+    }
+
+    [Benchmark(Description = "Guid.CreateVersion7() x1000 + HashSet dedupe")]
+    [BenchmarkCategory("Workloads")]
+    public bool GuidV7GenerateAndDedupe()
+    {
+        var set = new HashSet<Guid>(Count);
+        for (var i = 0; i < Count; i++)
+        {
+            if (!set.Add(Guid.CreateVersion7()))
                 return false;
         }
         return true;
