@@ -17,17 +17,6 @@ public readonly struct Gusid :
     IEquatable<Gusid>, 
     IFormattable
 {
-    // Insecure generation state.
-    //
-    // A single shared Random instance is not safe for concurrent use (its
-    // internal state can be corrupted, degrading output to zeros). Using a
-    // per-thread instance avoids locks entirely: no contention and no
-    // synchronization overhead.
-    private static int s_seed = Environment.TickCount;
-
-    [ThreadStatic]
-    private static Random? t_random;
-
     // Timestamp cache.
     //
     // DateTimeOffset.UtcNow.ToUnixTimeSeconds() is one of the slowest parts
@@ -91,64 +80,15 @@ public readonly struct Gusid :
     /// A new instance of <see cref="Gusid"/> containing a unique identifier.
     /// </returns>
     /// <remarks>
-    /// This method is allocation-free. The identifier is composed of a 4-byte
-    /// timestamp (seconds since Unix epoch) followed by 12 random bytes
-    /// (split into three 4-byte chunks), ensuring both uniqueness and sequentiality.
-    /// The first uint (_a) is the timestamp, making sorting by Gusid equivalent to sorting by creation time.
-    /// </remarks>
-    // The default value is intentionally retained for API compatibility even
-    // though the parameterless New() overload exists and shadows it; callers
-    // that explicitly pass `false` continue to compile.
-#pragma warning disable S3427 // Parameterized overload shadows the parameterless one; only used for explicit IsSecure choice.
-    public static Gusid New(bool IsSecure = false) =>
-        IsSecure ? NewSecure() : New();
-#pragma warning restore S3427
-
-    /// <summary>
-    /// Generates a new Gusid using a fast, non-cryptographic random source.
-    /// </summary>
-    /// <returns>A new instance of <see cref="Gusid"/> containing a unique identifier.</returns>
-    /// <remarks>
     /// This method is allocation-free (after the first call on each thread) and
-    /// lock-free. Each thread uses its own <see cref="Random"/> instance, so
-    /// concurrent callers never contend on shared state.
-    /// Do not use this overload for security-sensitive purposes; use
-    /// <see cref="NewSecure"/> instead.
-    /// </remarks>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Gusid New()
-    {
-        var random = t_random;
-        if (random is null)
-        {
-            // The increment of the process-unique seed guarantees a distinct
-            // seed for every thread.
-#pragma warning disable S2245 // Intentional: this is the non-cryptographic fast path; use NewSecure() for security-sensitive purposes.
-            random = t_random = new Random(Interlocked.Increment(ref s_seed));
-#pragma warning restore S2245
-        }
-
-        // Three full-range Next calls are cheaper than filling a 12-byte span.
-        var r1 = (uint)random.Next(int.MinValue, int.MaxValue);
-        var r2 = (uint)random.Next(int.MinValue, int.MaxValue);
-        var r3 = (uint)random.Next(int.MinValue, int.MaxValue);
-
-        return new Gusid(GetTimestamp(), r1, r2, r3);
-    }
-
-    /// <summary>
-    /// Generates a new Gusid using a cryptographically secure random source.
-    /// </summary>
-    /// <returns>A new instance of <see cref="Gusid"/> containing a unique identifier.</returns>
-    /// <remarks>
-    /// Random bytes are drawn from the operating system's CSPRNG. To avoid an
+    /// lock-free. Random bytes are drawn from the operating system's CSPRNG. To avoid an
     /// expensive syscall per identifier, each thread maintains a buffer of
     /// CSPRNG output that is refilled only when exhausted (once per 512 IDs).
     /// Every random byte is used exactly once, preserving the security
     /// properties of the underlying generator.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Gusid NewSecure()
+    public static Gusid New()
     {
         var buffer = t_secureBuffer;
         var offset = t_secureOffset;

@@ -12,12 +12,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
 
     - name: Restore dependencies
       run: dotnet restore src/UniqueIdentifier.sln
@@ -26,12 +26,12 @@ jobs:
       run: dotnet build --configuration Release --no-restore src/UniqueIdentifier.sln
 
     - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: build-artifacts
         path: |
           src/**/bin/Release
-          !src/**/bin/Release/net9.0/ref
+          !src/**/bin/Release/net10.0/ref
         if-no-files-found: error
 
   test:
@@ -40,15 +40,15 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
 
     - name: Download Build Artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: build-artifacts
         path: src/
@@ -57,17 +57,17 @@ jobs:
       run: dotnet test --configuration Release --no-build src/UniqueIdentifier.Tests/UniqueIdentifier.Tests.csproj --logger trx --results-directory TestResults
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: test-results
         path: TestResults/*.trx
         if-no-files-found: warn
 
     - name: Run Benchmarks
-      run: dotnet run --configuration Release --project src/UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj -- --filter *
+      run: dotnet run --configuration Release --project src/UniqueIdentifier.Benchmarks/UniqueIdentifier.Benchmarks.csproj -- --filter '*'
 
     - name: Upload Benchmark Results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: benchmark-results
         path: src/UniqueIdentifier.Benchmarks/BenchmarkDotNet.Artifacts/results
@@ -79,15 +79,15 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
 
     - name: Download Build Artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: build-artifacts
         path: src/
@@ -96,7 +96,7 @@ jobs:
       run: dotnet pack --configuration Release src/UniqueIdentifier/UniqueIdentifier.csproj -o out
 
     - name: Upload NuGet Package Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: nuget-package
         path: out/*.nupkg
