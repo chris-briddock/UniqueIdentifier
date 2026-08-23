@@ -260,15 +260,12 @@ public class SortingBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        // Build both arrays from the same seed so the input distributions are
-        // as equivalent as possible across the two types.
-        var random = new Random(42);
         _gusidSource = new Gusid[Count];
         _guidSource = new Guid[Count];
         for (var i = 0; i < Count; i++)
         {
             var bytes = new byte[16];
-            random.NextBytes(bytes);
+            System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
             _gusidSource[i] = Gusid.Parse(Convert.ToHexString(bytes).ToLowerInvariant());
             _guidSource[i] = new Guid(bytes);
         }
