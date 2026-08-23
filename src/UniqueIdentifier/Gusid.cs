@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
-namespace UniqueIdentifier;
+namespace System;
 
 /// <summary>
 /// Represents a globally unique sequential identifier (Gusid).
