@@ -1,21 +1,24 @@
-﻿namespace UniqueIdentifier.Console;
+﻿using System.Diagnostics;
 
-internal class Program
+namespace UniqueIdentifier.Console;
+
+internal sealed class Program
 {
+    private Program() {}
     static void Main(string[] args)
     {
         List<Gusid> items = [];
-        for (int i = 0; i < 10; i++)
+
+        var stopwatch = Stopwatch.StartNew();
+
+        for (int i = 0; i < 1_000_000; i++)
         {
             items.Add(Gusid.New());
         }
 
-        items.Sort();
+       stopwatch.Stop();
 
-        foreach (var item in items)
-        {
-            System.Console.WriteLine(item);
-        }
+       System.Console.WriteLine($"{stopwatch.ElapsedMilliseconds}");
 
         System.Console.ReadKey();
     }

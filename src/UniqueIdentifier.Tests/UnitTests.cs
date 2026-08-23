@@ -21,25 +21,9 @@ public class Tests
     }
 
     [Test]
-    public void New_WithIsSecureTrue_GeneratesValidIds()
+    public void New_RoundTripsThroughParse()
     {
-        var gusid = Gusid.New(true);
-        Assert.That(gusid.ToString().Length, Is.EqualTo(32));
-    }
-
-    [Test]
-    public void New_WithIsSecureTrue_GeneratesUniqueIds_WhenCalledMultipleTimes()
-    {
-        var gusid1 = Gusid.New(true);
-        var gusid2 = Gusid.New(true);
-
-        Assert.That(gusid1, Is.Not.EqualTo(gusid2));
-    }
-
-    [Test]
-    public void New_WithIsSecureTrue_RoundTripsThroughParse()
-    {
-        var original = Gusid.New(true);
+        var original = Gusid.New();
         var text = original.ToString();
         var parsed = Gusid.Parse(text);
 
@@ -279,27 +263,15 @@ public class Tests
     }
 
     [Test]
-    public void New_GeneratesManyIds_PerformanceTest_CryptographicallyInsecure()
+    public void New_GeneratesManyIds_PerformanceTest()
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < 5_000_000; i++)
+        for (int i = 0; i < 7_000_000; i++)
         {
-            var gusid = Gusid.New();
+            Gusid.New();
         }
         stopwatch.Stop();
-        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(5000));
-    }
-
-    [Test]
-    public void New_GeneratesManyIds_PerformanceTest_CryptographicallySecure()
-    {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < 2_500_000; i++)
-        {
-            var gusid = Gusid.New(true);
-        }
-        stopwatch.Stop();
-        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(5000));
+        Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(800));
     }
 
 }

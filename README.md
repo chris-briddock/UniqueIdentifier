@@ -5,20 +5,18 @@ A globally unique, sortable, 16-byte identifier for .NET, stored as four `uint`s
 A `Gusid` is composed of a 4-byte Unix timestamp (seconds) followed by 12 random bytes, so sorting by `Gusid` is equivalent to sorting by creation time.
 
 ```csharp
-var id       = Gusid.New();      // fast, non-cryptographic randomness
-var secure   = Gusid.New(true);  // cryptographically secure (buffered OS CSPRNG)
-var text     = id.ToString();    // 32-char lowercase hex
-var parsed   = Gusid.Parse(text);
+var id     = Gusid.New();        // cryptographically secure (buffered OS CSPRNG)
+var text   = id.ToString();      // 32-char lowercase hex
+var parsed = Gusid.Parse(text);
 ```
 
 ## Performance
 
-Generation is now faster than `Guid.NewGuid()` on both paths. Timestamp reads are cached (refreshed once per second via a monotonic counter), and secure generation amortizes the OS CSPRNG syscall across 512 identifiers per thread.
+Generation is cryptographically secure and faster than `Guid.NewGuid()`. Timestamp reads are cached (refreshed once per second via a monotonic counter), and secure generation amortizes the OS CSPRNG syscall across 512 identifiers per thread.
 
 | Operation                | Gusid       | `Guid.NewGuid()` |
 |--------------------------|-------------|------------------|
-| Generation (insecure)    | ~72 ns/op   | ~590 ns/op       |
-| Generation (secure)      | ~45 ns/op   | ~590 ns/op       |
+| Generation               | ~45 ns/op   | ~590 ns/op       |
 
 Numbers are medians from a Release-mode microbenchmark on .NET 10 (Linux x64); treat them as indicative only. Older benchmark tables have been removed because they were stale.
 
