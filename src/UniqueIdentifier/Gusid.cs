@@ -192,13 +192,14 @@ public readonly struct Gusid :
             result = default;
             return false;
         }
-        
-        // Parse the hex string directly into four uints, avoiding byte array allocation.
-        // Slices are used to parse each 8-character segment of the string.
-        if (uint.TryParse(s.Slice(0, 8), NumberStyles.HexNumber, provider, out var a) &&
-            uint.TryParse(s.Slice(8, 8), NumberStyles.HexNumber, provider, out var b) &&
-            uint.TryParse(s.Slice(16, 8), NumberStyles.HexNumber, provider, out var c) &&
-            uint.TryParse(s.Slice(24, 8), NumberStyles.HexNumber, provider, out var d))
+
+        // Manual hex decoding is significantly faster than uint.TryParse with
+        // NumberStyles.HexNumber because it avoids culture/provider lookups,
+        // span slicing, and the general-purpose parsing state machine.
+        if (TryParseHex(s, 0, out var a) &&
+            TryParseHex(s, 8, out var b) &&
+            TryParseHex(s, 16, out var c) &&
+            TryParseHex(s, 24, out var d))
         {
             result = new Gusid(a, b, c, d);
             return true;
@@ -206,6 +207,40 @@ public readonly struct Gusid :
 
         result = default;
         return false;
+    }
+
+    /// <summary>
+    /// Parses exactly 8 hexadecimal digits starting at <paramref name="offset"/>
+    /// into a single <see cref="uint"/>. Both upper- and lower-case letters are accepted.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool TryParseHex(ReadOnlySpan<char> s, int offset, out uint value)
+    {
+        value = 0;
+        for (var i = offset; i < offset + 8; i++)
+        {
+            var c = s[i];
+            uint digit;
+            if (c >= '0' && c <= '9')
+            {
+                digit = (uint)(c - '0');
+            }
+            else if (c >= 'a' && c <= 'f')
+            {
+                digit = (uint)(c - 'a' + 10);
+            }
+            else if (c >= 'A' && c <= 'F')
+            {
+                digit = (uint)(c - 'A' + 10);
+            }
+            else
+            {
+                return false;
+            }
+
+            value = (value << 4) | digit;
+        }
+        return true;
     }
 
     /// <summary>
@@ -222,27 +257,55 @@ public readonly struct Gusid :
 
     /// <summary>
     /// Returns a 32-character lowercase hexadecimal string representation of the <see cref="Gusid"/>.
+    /// The <paramref name="format"/> and <paramref name="formatProvider"/> arguments are ignored;
+    /// this type has a single canonical representation.
     /// This method is allocation-free except for the final string object.
     /// </summary>
     public string ToString(string? format, IFormatProvider? formatProvider)
     {
         // Allocate the required 32 characters on the stack.
         Span<char> buffer = stackalloc char[16 * 2];
-        
-        // Use the efficient TryFormat to write each part of the Gusid into the buffer.
-        // "x8" ensures an 8-digit lowercase hexadecimal representation, padding with zeros if needed.
-        _a.TryFormat(buffer, out _, "x8");
-        _b.TryFormat(buffer[8..], out _, "x8");
-        _c.TryFormat(buffer[16..], out _, "x8");
-        _d.TryFormat(buffer[24..], out _, "x8");
+
+        // Manual hex encoding avoids the culture-aware formatting machinery
+        // inside uint.TryFormat and lets the JIT optimize the nibble loop.
+        WriteHex(buffer, 0, _a);
+        WriteHex(buffer, 8, _b);
+        WriteHex(buffer, 16, _c);
+        WriteHex(buffer, 24, _d);
 
         return new string(buffer);
     }
-    
+
+    /// <summary>
+    /// Writes <paramref name="value"/> as exactly 8 lowercase hexadecimal digits
+    /// starting at <paramref name="offset"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteHex(Span<char> destination, int offset, uint value)
+    {
+        const string Hex = "0123456789abcdef";
+        for (var shift = 28; shift >= 0; shift -= 4)
+        {
+            destination[offset] = Hex[(int)(value >> shift) & 0xF];
+            offset++;
+        }
+    }
+
     /// <summary>
     /// Returns a 32-character lowercase hexadecimal string representation of the <see cref="Gusid"/>.
     /// </summary>
-    public override string ToString() => ToString("x", null);
+    public override string ToString()
+    {
+        // Allocate the required 32 characters on the stack.
+        Span<char> buffer = stackalloc char[16 * 2];
+
+        WriteHex(buffer, 0, _a);
+        WriteHex(buffer, 8, _b);
+        WriteHex(buffer, 16, _c);
+        WriteHex(buffer, 24, _d);
+
+        return new string(buffer);
+    }
 
     /// <summary>
     /// Compares the current instance with another <see cref="Gusid"/>.
@@ -279,14 +342,18 @@ public readonly struct Gusid :
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int GetHashCode()
     {
-        // The HashCode struct provides a high-quality way to combine hash codes.
-        // As a struct, this operation is allocation-free.
-        var hash = new HashCode();
-        hash.Add(_a);
-        hash.Add(_b);
-        hash.Add(_c);
-        hash.Add(_d);
-        return hash.ToHashCode();
+        // Arithmetic combine is cheaper than the HashCode struct's SipHash-based
+        // double-round mixing, while still providing well-distributed hashes for
+        // identifiers used as dictionary keys. Unchecked context makes overflow
+        // explicit and avoids extra branches.
+        unchecked
+        {
+            var hash = (int)_a;
+            hash = (hash * 397) ^ (int)_b;
+            hash = (hash * 397) ^ (int)_c;
+            hash = (hash * 397) ^ (int)_d;
+            return hash;
+        }
     }
 
     /// <inheritdoc/>
