@@ -93,7 +93,9 @@ jobs:
         path: src/
 
     - name: Pack NuGet Package
-      run: dotnet pack --configuration Release src/UniqueIdentifier/UniqueIdentifier.csproj -o out -p:PackageVersion=${{ secrets.RELEASE_VERSION }}
+      run: dotnet pack --configuration Release src/UniqueIdentifier/UniqueIdentifier.csproj -o out -p:PackageVersion=${{ env.RELEASE_VERSION }}
+      env:
+        RELEASE_VERSION: ${{ secrets.RELEASE_VERSION }}
 
     - name: Upload NuGet Package Artifact
       uses: actions/upload-artifact@v6
@@ -103,7 +105,9 @@ jobs:
         if-no-files-found: error
 
     - name: Add GitHub NuGet Source
-      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
+      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username ${{ github.actor }} --password ${{ env.GITHUB_TOKEN }} --store-password-in-clear-text
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Push NuGet Package to GitHub Packages
       run: dotnet nuget push "out/*.nupkg" --source "github" --skip-duplicate

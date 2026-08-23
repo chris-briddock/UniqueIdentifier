@@ -28,13 +28,13 @@ public class Benchmarks
     private Guid _guid1;
     private Guid _guidEqual;
     private Guid _guidDifferent;
-    private string _gusidString = null!;
-    private string _guidString = null!;
-    private char[] _gusidFormatDestination = null!;
+    private string _gusidString = string.Empty;
+    private string _guidString = string.Empty;
+    private char[] _gusidFormatDestination = [];
 
     // ----- HashSet data -----
-    private Gusid[] _gusidSetSource = null!;
-    private Guid[] _guidSetSource = null!;
+    private Gusid[] _gusidSetSource = [];
+    private Guid[] _guidSetSource = [];
 
     [GlobalSetup]
     public void Setup()
@@ -252,10 +252,10 @@ public class SortingBenchmarks
 {
     private const int Count = 1000;
 
-    private Gusid[] _gusidSource = null!;
-    private Guid[] _guidSource = null!;
-    private Gusid[] _gusidWork = null!;
-    private Guid[] _guidWork = null!;
+    private Gusid[] _gusidSource = [];
+    private Guid[] _guidSource = [];
+    private Gusid[] _gusidWork = [];
+    private Guid[] _guidWork = [];
 
     [GlobalSetup]
     public void Setup()
